@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
 
     await newChat.save();
 
-    // Emit the message directly to the sender
+    // Emit the message directly to both the sender and receiver
     socket.emit('message', {
       _id: newChat._id,
       text: message.text,
@@ -60,21 +60,6 @@ io.on('connection', (socket) => {
         avatar: 'sender-avatar-url', // Replace with actual user avatar
       },
     });
-
-    // Emit the message directly to the receiver if online
-    const receiverSocket = connectedUsers[message.receiver];
-    if (receiverSocket) {
-      receiverSocket.emit('message', {
-        _id: newChat._id,
-        text: message.text,
-        createdAt: newChat.createdAt,
-        user: {
-          _id: message.sender,
-          name: 'Sender Name', // Replace with actual user name
-          avatar: 'sender-avatar-url', // Replace with actual user avatar
-        },
-      });
-    }
   });
 
   socket.on('disconnect', () => {
