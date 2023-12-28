@@ -1,4 +1,3 @@
-// app.js
 const express = require('express');
 const mongoose = require('mongoose');
 const http = require('http');
@@ -26,17 +25,20 @@ app.use(express.json());
 
 app.use('/api/user/chat', ChatRoutes);
 
+// Store connected sockets with their corresponding user IDs
+const connectedUsers = {};
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('join', (senderId, receiverId) => {
-    const roomId = generateRoomId(senderId, receiverId);
-    socket.join(roomId);
-    console.log(`User joined chat between ${senderId} and ${receiverId} (Room ID: ${roomId}):`, socket.id);
+  socket.on('join', (userId) => {
+    // Store the socket with the user ID
+    connectedUsers[userId] = socket;
+    console.log(`User ${userId} joined chat:`, socket.id);
   });
 
-  socket.on('message', (message) => {
-    console.log(`Message received in chat between ${message.sender} and ${message.receiver}:`, message);
+  socket.on('message', async (message) => {
+    console.log(`Message received from ${message.sender} to ${message.receiver}:`, message);
 
     const newChat = new Chat({
       sender: message.sender,
@@ -45,9 +47,10 @@ io.on('connection', (socket) => {
       read: false,
     });
 
-    newChat.save();
+    await newChat.save();
 
-    io.to(generateRoomId(message.sender, message.receiver)).emit('message', {
+    // Emit the message directly to the sender
+    socket.emit('message', {
       _id: newChat._id,
       text: message.text,
       createdAt: newChat.createdAt,
@@ -57,17 +60,32 @@ io.on('connection', (socket) => {
         avatar: 'sender-avatar-url', // Replace with actual user avatar
       },
     });
+
+    // Emit the message directly to the receiver if online
+    const receiverSocket = connectedUsers[message.receiver];
+    if (receiverSocket) {
+      receiverSocket.emit('message', {
+        _id: newChat._id,
+        text: message.text,
+        createdAt: newChat.createdAt,
+        user: {
+          _id: message.sender,
+          name: 'Sender Name', // Replace with actual user name
+          avatar: 'sender-avatar-url', // Replace with actual user avatar
+        },
+      });
+    }
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    // Remove the socket reference when a user disconnects
+    const userId = Object.keys(connectedUsers).find((key) => connectedUsers[key] === socket);
+    if (userId) {
+      delete connectedUsers[userId];
+      console.log(`User ${userId} disconnected:`, socket.id);
+    }
   });
 });
-
-function generateRoomId(userId1, userId2) {
-  // You can create a unique ID based on the two user IDs
-  return `${userId1}_${userId2}`;
-}
 
 const port = process.env.PORT || 5050;
 server.listen(port, () => {
