@@ -41,14 +41,13 @@ const getChatHistoryForSelectedReceiver = async (userId) => {
 
   return chatHistoryForSelectedReceiver;
 };
-
 const send = async (req, res) => {
   try {
     const { receiver, message } = req.body;
     const sender = req.user.id;
 
-    if (!sender || !message) {
-      return res.status(400).json({ message: 'Receiver and message are required.' });
+    if (!sender || !receiver || !message) {
+      return res.status(400).json({ message: 'Sender, receiver, and message are required.' });
     }
 
     // Store the message for both users
@@ -58,10 +57,10 @@ const send = async (req, res) => {
       message,
     });
 
-    res.status(201).json({ message: 'Message sent' });
+    res.status(201).json({ message: 'Message sent successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Failed to send message', error: error.message });
   }
 };
 
@@ -82,10 +81,10 @@ const receive = async (req, res) => {
     });
 
     // Send the message to the receiver
-    return res.status(201).json({ message: 'Message received' });
+    return res.status(201).json({ message: 'Message received successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Failed to receive message', error: error.message });
   }
 };
 

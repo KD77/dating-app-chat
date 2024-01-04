@@ -39,28 +39,40 @@ io.on('connection', (socket) => {
 
   socket.on('message', async (message) => {
     console.log(`Message received from ${message.sender} to ${message.receiver}:`, message);
-
+  
     const newChat = new Chat({
       sender: message.sender,
       receiver: message.receiver,
-      message: message.text,
+      message: message.message,
       read: false,
     });
-
+  
     await newChat.save();
-
-    // Emit the message directly to both the sender and receiver
-    socket.emit('message', {
-      _id: newChat._id,
-      text: message.text,
-      createdAt: newChat.createdAt,
-      user: {
-        _id: message.sender,
-        name: 'Sender Name', // Replace with actual user name
-        avatar: 'sender-avatar-url', // Replace with actual user avatar
-      },
-    });
-  });
+  
+    // Emit the message directly to the sender
+    if (connectedUsers[message.sender] && connectedUsers[message.sender] !== socket) {
+      connectedUsers[message.sender].emit('message', {
+        _id: newChat._id,
+        message: message.message,
+        createdAt: newChat.createdAt,
+        user: {
+          _id: message.sender,
+        },
+      });
+    }
+  
+    // Emit the message directly to the receiver
+    if (connectedUsers[message.receiver] && connectedUsers[message.receiver] !== socket) {
+      connectedUsers[message.receiver].emit('message', {
+        _id: newChat._id,
+        message: message.message,
+        createdAt: newChat.createdAt,
+        user: {
+          _id: message.receiver,
+        },
+      });
+    }
+  });  
 
   socket.on('disconnect', () => {
     // Remove the socket reference when a user disconnects
